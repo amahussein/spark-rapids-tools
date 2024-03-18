@@ -1,4 +1,4 @@
-# Copyright (c) 2023, NVIDIA CORPORATION.
+# Copyright (c) 2023-2024, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@
 
 import fire
 
+from spark_rapids_tools.cmdli.argprocessor import AbsToolUserArgModel
 from spark_rapids_tools.enums import QualGpuClusterReshapeType
 from spark_rapids_tools.utils.util import gen_app_banner, init_environment
 from spark_rapids_pytools.common.utilities import Utils, ToolLogging
 from spark_rapids_pytools.rapids.bootstrap import Bootstrap
 from spark_rapids_pytools.rapids.profiling import ProfilingAsLocal
 from spark_rapids_pytools.rapids.qualification import QualificationAsLocal
-from .argprocessor import AbsToolUserArgModel
 
 
 class ToolsCLI(object):  # pylint: disable=too-few-public-methods
@@ -41,6 +41,7 @@ class ToolsCLI(object):  # pylint: disable=too-few-public-methods
                       target_platform: str = None,
                       output_folder: str = None,
                       filter_apps: str = None,
+                      estimation_model: str = None,
                       cpu_cluster_price: float = None,
                       estimated_gpu_cluster_price: float = None,
                       cpu_discount: int = None,
@@ -83,6 +84,10 @@ class ToolsCLI(object):  # pylint: disable=too-few-public-methods
                 'Recommended', or 'Strongly Recommended' based on speedups. "SAVINGS"
                 lists all the apps that have positive estimated GPU savings except for the apps that
                 are "Not Applicable"
+        :param estimation_model: Model used to calculate the estimated GPU duration and cost savings.
+               It accepts one of the following:
+               "XGBOOST": an XGBoost model for GPU duration estimation
+               "SPEEDUPS": set by default. It uses a simple static estimated speedup per operator.
         :param cpu_cluster_price: the CPU cluster hourly price provided by the user.
         :param estimated_gpu_cluster_price: the GPU cluster hourly price provided by the user.
         :param cpu_discount: A percent discount for the cpu cluster cost in the form of an integer value
@@ -120,6 +125,7 @@ class ToolsCLI(object):  # pylint: disable=too-few-public-methods
                                                          target_platform=target_platform,
                                                          output_folder=output_folder,
                                                          filter_apps=filter_apps,
+                                                         estimation_model=estimation_model,
                                                          cpu_cluster_price=cpu_cluster_price,
                                                          estimated_gpu_cluster_price=estimated_gpu_cluster_price,
                                                          cpu_discount=cpu_discount,

@@ -1,4 +1,4 @@
-# Copyright (c) 2023, NVIDIA CORPORATION.
+# Copyright (c) 2023-2024, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -129,3 +129,13 @@ class QualGpuClusterReshapeType(EnumeratedType):
     @classmethod
     def get_default(cls):
         return cls.MATCH
+
+
+class QualEstimationModel(EnumeratedType):
+    """Values used to define the speedup values of the applications"""
+    XGBOOST = 'xgboost'
+    SPEEDUPS = 'speedups'
+
+    @classmethod
+    def get_default(cls):
+        return cls.SPEEDUPS
