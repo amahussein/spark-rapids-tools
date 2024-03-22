@@ -32,6 +32,7 @@ from spark_rapids_pytools.pricing.price_provider import SavingsEstimator
 from spark_rapids_pytools.rapids.rapids_job import RapidsJobPropContainer
 from spark_rapids_pytools.rapids.rapids_tool import RapidsJarTool
 from spark_rapids_tools.enums import QualFilterApp, QualGpuClusterReshapeType, QualEstimationModel
+from spark_rapids_tools.tools.model_xgboost import predict
 
 
 @dataclass
@@ -788,6 +789,12 @@ class Qualification(RapidsJarTool):
 
         if not self._evaluate_rapids_jar_tool_output_exist():
             return
+        # process the output through the XGboost model if enabled
+        if self.ctxt.get_ctxt('estimationModel') == QualEstimationModel.XGBOOST:
+            xgboost_input_dir = self.ctxt.get_local('outputFolder')
+            xgboost_output_dir = xgboost_input_dir
+            predict(qual=xgboost_input_dir, profile=xgboost_input_dir, output_dir=xgboost_output_dir)
+
         rapids_output_dir = self.ctxt.get_rapids_output_folder()
         rapids_summary_file = FSUtil.build_path(rapids_output_dir,
                                                 self.ctxt.get_value('toolOutput', 'csv', 'summaryReport', 'fileName'))
