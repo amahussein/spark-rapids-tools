@@ -17,7 +17,9 @@
 package org.apache.spark.rapids.tool.benchmarks
 
 import java.io.{OutputStream, PrintStream}
+import java.lang.management.ManagementFactory
 
+import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.NANOSECONDS
@@ -101,18 +103,28 @@ class Benchmark(
     // The results are going to be processor specific so it is useful to include that.
     out.println(RuntimeUtil.getJVMOSInfo.mkString("\n"))
     val nameLen = Math.max(40, Math.max(name.length, benchmarks.map(_.name.length).max))
-    out.printf(s"%-${nameLen}s %14s %14s %11s %10s\n",
-      name + ":", "Best Time(ms)", "Avg Time(ms)", "Stdev(ms)", "Relative")
+    out.printf(s"%-${nameLen}s %14s %14s %11s %10s %10s %10s\n",
+      name + ":", "Best Time(ms)", "Avg Time(ms)", "Stdev(ms)","Max GC Time(ms)",
+      "Max GC Count", "Relative")
     out.println("-" * (nameLen + 80))
     results.zip(benchmarks).foreach { case (result, benchmark) =>
-      out.printf(s"%-${nameLen}s %14s %14s %11s %10s\n",
+      out.printf(s"%-${nameLen}s %14s %14s %11s %10s %10s %10s\n",
         benchmark.name,
         "%5.0f" format result.bestMs,
         "%4.0f" format result.avgMs,
         "%5.0f" format result.stdevMs,
+        "%8d" format result.maxGcTime,
+        "%5d" format result.maxGcCount,
         "%3.1fX" format (firstBest / result.bestMs))
     }
     out.println()
+  }
+
+  private def getGcMetrics: (Any, Any) = {
+    val gcBeans = ManagementFactory.getGarbageCollectorMXBeans
+    val gcTime = gcBeans.map(_.getCollectionTime).sum
+    val gcCount = gcBeans.map(_.getCollectionCount).sum
+    (gcTime, gcCount)
   }
 
   /**
@@ -127,17 +139,23 @@ class Benchmark(
     val minIters = if (overrideNumIters != 0) overrideNumIters else minNumIters
     val runTimes = ArrayBuffer[Long]()
     var totalTime = 0L
+    var maxGcCount = 0L
+    var maxGcTime = 0L
     for (i <- 0 until minIters) {
       val timer = new ToolsTimer(i)
+      val (gcTimeBefore, gcCountBefore) = getGcMetrics
       f(timer)
       val runTime = timer.totalTime()
       runTimes += runTime
       totalTime += runTime
-
+      val (gcTimeAfter, gcCountAfter) = getGcMetrics
+      maxGcTime = math.max(maxGcTime, gcTimeAfter.asInstanceOf[Long] - gcTimeBefore.asInstanceOf[Long])
+      maxGcCount = math.max(maxGcCount, gcCountAfter.asInstanceOf[Long] - gcCountBefore.asInstanceOf[Long])
       if (outputPerIteration) {
         // scalastyle:off
         println("*"*80)
         println(s"Iteration $i took ${NANOSECONDS.toMicros(runTime)} microseconds")
+        println(s"Iteration $i GC time ${gcTimeAfter.asInstanceOf[Long] - gcTimeBefore.asInstanceOf[Long]}")
         println("*"*80)
         // scalastyle:on
       }
@@ -153,12 +171,13 @@ class Benchmark(
     val stdev = if (runTimes.size > 1) {
       math.sqrt(runTimes.map(time => (time - avg) * (time - avg)).sum / (runTimes.size - 1))
     } else 0
-    Benchmark.Result(avg / 1000000.0,  best / 1000000.0, stdev / 1000000.0)
+    Benchmark.Result(avg / 1000000.0,  best / 1000000.0, stdev / 1000000.0, maxGcTime, maxGcCount)
   }
 }
 
 
 object Benchmark {
   case class Case(name: String, fn: ToolsTimer => Unit, numIters: Int)
-  case class Result(avgMs: Double, bestMs: Double, stdevMs: Double)
+  case class Result(avgMs: Double, bestMs: Double, stdevMs: Double,
+      maxGcTime: Long = 0, maxGcCount: Long = 0)
 }
