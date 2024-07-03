@@ -29,17 +29,4 @@ class MemoryMetricsTracker {
     val (_, newGcTime:Long) = getCurrentGCMetrics
     newGcTime - startGCMetrics._2
   }
-
-  def getCurrentMaxHeapMemory: Long = {
-    ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getMax
-  }
-
-  def getCurrentUsedHeapMemory: Long = {
-    ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getUsed
-  }
-
-  def getCurrentFreeHeapMemory: Long = {
-    ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getMax -
-      ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getUsed
-  }
 }
