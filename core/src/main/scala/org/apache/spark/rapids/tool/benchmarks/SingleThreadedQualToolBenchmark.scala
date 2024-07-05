@@ -27,7 +27,7 @@ import com.nvidia.spark.rapids.tool.qualification.QualificationMain.mainInternal
  * 2. Write the benchmark code in the runBenchmark method passing relevant arguments
  * 3. Write benchmarked code inside
  */
-object QualificationToolBenchmark extends BenchmarkBase {
+object SingleThreadedQualToolBenchmark extends BenchmarkBase {
   override def runBenchmarkSuite(iterations: Int,
     warmUpIterations: Int,
     outputFormat: String,
@@ -40,14 +40,14 @@ object QualificationToolBenchmark extends BenchmarkBase {
           outputPerIteration = true,
           warmUpIterations = warmUpIterations,
           minNumIters = iterations)
+      val (prefix,suffix) = mainArgs.splitAt(mainArgs.length - 1)
       benchmarker.addCase("Enable_Per_SQL_Arg_Qualification") { _ =>
-        val (prefix,suffix) = mainArgs.splitAt(mainArgs.length - 1)
-
-        mainInternal(new QualificationArgs(prefix :+ "--per-sql" :+ suffix.head),
+        mainInternal(new QualificationArgs(prefix :+ "--per-sql" :+ "--num-threads"
+          :+ "1" :+ suffix.head),
           enablePB = true)
       }
       benchmarker.addCase("Disable_Per_SQL_Arg_Qualification") { _ =>
-        mainInternal(new QualificationArgs(mainArgs),
+        mainInternal(new QualificationArgs(prefix :+ "--num-threads" :+ "1" :+ suffix.head),
           enablePB = true)
       }
       benchmarker.run()

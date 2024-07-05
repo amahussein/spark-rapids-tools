@@ -100,13 +100,13 @@ class Benchmark(
     val firstBest = results.head.bestMs
     // The results are going to be processor specific so it is useful to include that.
     val jvmInfo = RuntimeUtil.getJVMOSInfo
-    out.printf(s"%-26s ->   %-30s \n","JVM Name", jvmInfo("jvm.name"))
-    out.printf(s"%-26s ->   %-30s \n","Java Version",jvmInfo("jvm.version"))
-    out.printf(s"%-26s ->   %-30s \n","OS Name",jvmInfo("os.name"))
-    out.printf(s"%-26s ->   %-30s \n","OS Version",jvmInfo("os.version"))
-    out.printf(s"%-26s ->   %-30s \n","MaxHeapMemory", ("%6d" format Runtime.getRuntime.maxMemory()/1024/1024)+"MB")
-    out.printf(s"%-26s ->   %-30s \n","Total Warm Up Iterations","%2d" format warmUpIterations)
-    out.printf(s"%-26s ->   %-30s \n \n","Total Runtime Iterations","%2d" format minNumIters)
+    out.printf(s"%-26s :   %s \n","JVM Name", jvmInfo("jvm.name"))
+    out.printf(s"%-26s :   %s \n","Java Version", jvmInfo("jvm.version"))
+    out.printf(s"%-26s :   %s \n","OS Name", jvmInfo("os.name"))
+    out.printf(s"%-26s :   %s \n","OS Version", jvmInfo("os.version"))
+    out.printf(s"%-26s :   %s MB \n","MaxHeapMemory", (Runtime.getRuntime.maxMemory()/1024/1024).toString)
+    out.printf(s"%-26s :   %s \n","Total Warm Up Iterations", warmUpIterations.toString)
+    out.printf(s"%-26s :   %s \n \n","Total Runtime Iterations", minNumIters.toString)
     val nameLen = Math.max(40, Math.max(name.length, benchmarks.map(_.name.length).max))
     out.printf(s"%-${nameLen}s %14s %14s %11s %20s %18s %18s %18s %18s %10s\n",
       name + ":", "Best Time(ms)", "Avg Time(ms)", "Stdev(ms)","Avg GC Time(ms)",
