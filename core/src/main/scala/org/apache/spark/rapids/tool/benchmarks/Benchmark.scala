@@ -99,8 +99,14 @@ class Benchmark(
 
     val firstBest = results.head.bestMs
     // The results are going to be processor specific so it is useful to include that.
-    out.println(RuntimeUtil.getJVMOSInfo.mkString("\n"))
-    out.println(s"MaxHeapMemory -> ${Runtime.getRuntime.maxMemory()} \n")
+    val jvmInfo = RuntimeUtil.getJVMOSInfo
+    out.printf(s"%-26s ->   %-30s \n","JVM Name", jvmInfo("jvm.name"))
+    out.printf(s"%-26s ->   %-30s \n","Java Version",jvmInfo("jvm.version"))
+    out.printf(s"%-26s ->   %-30s \n","OS Name",jvmInfo("os.name"))
+    out.printf(s"%-26s ->   %-30s \n","OS Version",jvmInfo("os.version"))
+    out.printf(s"%-26s ->   %-30s \n","MaxHeapMemory", ("%6d" format Runtime.getRuntime.maxMemory()/1024/1024)+"MB")
+    out.printf(s"%-26s ->   %-30s \n","Total Warm Up Iterations","%2d" format warmUpIterations)
+    out.printf(s"%-26s ->   %-30s \n \n","Total Runtime Iterations","%2d" format minNumIters)
     val nameLen = Math.max(40, Math.max(name.length, benchmarks.map(_.name.length).max))
     out.printf(s"%-${nameLen}s %14s %14s %11s %20s %18s %18s %18s %18s %10s\n",
       name + ":", "Best Time(ms)", "Avg Time(ms)", "Stdev(ms)","Avg GC Time(ms)",
@@ -117,7 +123,7 @@ class Benchmark(
         "%5.0f" format result.memoryParams.stdDevGCCount,
         "%5d" format result.memoryParams.maxGcTime,
         "%5d" format result.memoryParams.maxGCCount,
-        "%3.1fX" format (firstBest / result.bestMs))
+        "%3.2fX" format (firstBest / result.bestMs))
     }
     out.println()
   }
@@ -163,12 +169,16 @@ class Benchmark(
     val stdevRunTime = if (runTimes.size > 1) {
       math.sqrt(runTimes.map(time => (time - avgRuntime) *
         (time - avgRuntime)).sum / (runTimes.size - 1))
-    } else 0
+    } else {
+      0
+    }
     val maxGcCount = gcCounts.max
     val stdevGcCount = if (gcCounts.size > 1) {
       math.sqrt(gcCounts.map(gc => (gc - maxGcCount) *
         (gc - maxGcCount)).sum / (gcCounts.size - 1))
-    } else 0
+    } else {
+      0
+    }
     val avgGcCount = gcCounts.sum / minIters
     val avgGcTime = gcTimes.sum / minIters
     val maxGcTime = gcTimes.max
