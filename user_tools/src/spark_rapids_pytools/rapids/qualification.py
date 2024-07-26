@@ -787,9 +787,8 @@ class Qualification(RapidsJarTool):
         if self.ctxt.get_ctxt('cpuClusterProxy') is not None or not self.ctxt.platform.cluster_inference_supported:
             self.logger.info('CPU cluster is already set. Skipping cluster inference.')
             return
-        cpu_cluster_cols = ['Num Executor Nodes', 'Executor Instance', 'Cores Per Executor']
-        gpu_cluster_cols = ['Recommended Num Executor Nodes', 'Recommended Executor Instance',
-                            'Recommended Cores Per Executor']
+        cpu_cluster_cols = self.ctxt.get_value('local', 'output', 'clusterInference', 'cpuClusterColumns')
+        gpu_cluster_cols = self.ctxt.get_value('local', 'output', 'clusterInference', 'gpuClusterColumns')
         # ==  Infer CPU clusters per app ==
         # Drop GPU/Recommended columns to infer the CPU cluster information
         cpu_cluster_df = cluster_info_df.drop(columns=gpu_cluster_cols, errors='ignore')
