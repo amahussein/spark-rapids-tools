@@ -23,47 +23,57 @@ import com.nvidia.spark.rapids.tool.analysis.StatisticsMetrics
 import org.apache.spark.scheduler.AccumulableInfo
 import org.apache.spark.sql.rapids.tool.util.EventUtils.parseAccumFieldToLong
 
+/**
+ * Maintains the accumulator information for a single accumulator
+ * This maintains following information:
+ * 1. Task updates for the accumulator - a map of all taskIds and their update values
+ * 2. Stage values for the accumulator - a map of all stageIds and their total values
+ * 3. AccumMetaRef for the accumulator - a reference to the Meta information
+ * @param infoRef - AccumMetaRef for the accumulator
+ */
 class AccumInfo(val infoRef: AccMetaRef) {
   // TODO: Should we use sorted maps for stageIDs and taskIds?
-  private val taskUpdatesMap: mutable.HashMap[Long, Long] =
+  val taskUpdatesMap: mutable.HashMap[Long, Long] =
     new mutable.HashMap[Long, Long]()
-  private val stageValuesMap: mutable.HashMap[Int, Long] =
+  val stageValuesMap: mutable.HashMap[Int, Long] =
     new mutable.HashMap[Int, Long]()
 
   def addAccToStage(stageId: Int,
       accumulableInfo: AccumulableInfo,
       update: Option[Long] = None): Unit = {
-    val value = accumulableInfo.value.flatMap(parseAccumFieldToLong)
-    value match {
-      case Some(v) =>
-        stageValuesMap.put(stageId, v)
-      case _ =>
-        // this could be the case when a task update has triggered the stage update
-        stageValuesMap.put(stageId, update.getOrElse(0L))
+    val parsedValue = accumulableInfo.value.flatMap(parseAccumFieldToLong)
+    val existingValue = stageValuesMap.getOrElse(stageId, 0L)
+    val incomingValue = parsedValue match {
+      case Some(v) => v
+      case _ => update.getOrElse(0L)
     }
+    stageValuesMap.put(stageId, Math.max(existingValue, incomingValue))
   }
 
   def addAccToTask(stageId: Int, taskId: Long, accumulableInfo: AccumulableInfo): Unit = {
-    val update = accumulableInfo.update.flatMap(parseAccumFieldToLong)
+    val parsedUpdateValue = accumulableInfo.update.flatMap(parseAccumFieldToLong)
     // we have to update the stageMap if the stageId does not exist in the map
-    var updateStageFlag = !taskUpdatesMap.contains(stageId)
-    // TODO: Task can update an accum multiple times. Should account for that case.
-    update match {
+    val updateStageFlag = !stageValuesMap.contains(stageId)
+    // This is for cases where same task updates the same accum multiple times
+    val existingUpdateValue = taskUpdatesMap.getOrElse(taskId, 0L)
+    parsedUpdateValue match {
       case Some(v) =>
-        taskUpdatesMap.put(taskId, v)
-        // update teh stage if the task's update is non-zero
-        updateStageFlag ||= v != 0
+        taskUpdatesMap.put(taskId, v + existingUpdateValue)
       case None =>
-        taskUpdatesMap.put(taskId, 0L)
+        taskUpdatesMap.put(taskId, existingUpdateValue)
     }
     // update the stage value map if necessary
     if (updateStageFlag) {
-      addAccToStage(stageId, accumulableInfo, update)
+      addAccToStage(stageId, accumulableInfo, parsedUpdateValue)
     }
   }
 
   def getStageIds: Set[Int] = {
     stageValuesMap.keySet.toSet
+  }
+
+  def getMinStageId: Int = {
+      stageValuesMap.keys.min
   }
 
   def calculateAccStats(): StatisticsMetrics = {

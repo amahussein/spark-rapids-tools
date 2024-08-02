@@ -16,9 +16,13 @@
 
 package org.apache.spark.sql.rapids.tool.store
 
-case class AccMetaRef(id: Long, name: AccNameRef) {
-
-}
+/**
+ * Accumulator Meta Reference
+ * This maintains the reference to the metadata associated with an accumulable
+ * @param id - Accumulable id
+ * @param name - Reference to the accumulator name
+ */
+case class AccMetaRef(id: Long, name: AccNameRef)
 
 object AccMetaRef {
   def apply(id: Long, name: Option[String]): AccMetaRef =

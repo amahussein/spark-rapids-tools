@@ -24,7 +24,7 @@ import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet, LinkedHashSet, M
 import com.nvidia.spark.rapids.tool.{DatabricksEventLog, DatabricksRollingEventLogFilesFileReader, EventLogInfo}
 import com.nvidia.spark.rapids.tool.planparser.{HiveParseHelper, ReadParser}
 import com.nvidia.spark.rapids.tool.planparser.HiveParseHelper.isHiveTableScanNode
-import com.nvidia.spark.rapids.tool.profiling.{BlockManagerRemovedCase, DataSourceCase, DriverAccumCase, JobInfoClass, ResourceProfileInfoCase, SQLExecutionInfoClass, SQLPlanMetricsCase, TaskStageAccumCase}
+import com.nvidia.spark.rapids.tool.profiling.{BlockManagerRemovedCase, DataSourceCase, DriverAccumCase, JobInfoClass, ResourceProfileInfoCase, SQLExecutionInfoClass, SQLPlanMetricsCase}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 
@@ -79,8 +79,6 @@ abstract class AppBase(
   var sqlPlanMetricsAdaptive: ArrayBuffer[SQLPlanMetricsCase] = ArrayBuffer[SQLPlanMetricsCase]()
 
   // accum id to task stage accum info
-  var taskStageAccumMap: HashMap[Long, ArrayBuffer[TaskStageAccumCase]] =
-    HashMap[Long, ArrayBuffer[TaskStageAccumCase]]()
   lazy val accumManager: AccumManager = new AccumManager()
 
   lazy val stageManager: StageModelManager = new StageModelManager()
@@ -181,9 +179,8 @@ abstract class AppBase(
   }
 
   def cleanupAccumId(accId: Long): Unit = {
-    taskStageAccumMap.remove(accId)
+    accumManager.removeAccumInfo(accId)
     driverAccumMap.remove(accId)
-    stageManager.removeAccumulatorId(accId)
   }
 
   def cleanupStages(stageIds: Set[Int]): Unit = {
