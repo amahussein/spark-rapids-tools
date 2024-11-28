@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.{ExecInfo, OpTypes}
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
@@ -37,14 +38,14 @@ case class WriteFilesExecParser(
   override def parse: ExecInfo = {
     // the WriteFiles does not have duration
     val duration = None
-    val speedupFactor = checker.getSpeedupFactor(fullExecName)
     ExecInfo.createExecNoNode(
       sqlID,
-      WriteFilesExecParser.execName,
+      fullExecName,
       "",
-      speedupFactor,
       duration,
-      node.id, opType = OpTypes.WriteExec, true, None)
+      node.id,
+      opType = OpTypes.WriteExec,
+      true, None)
   }
 }
 

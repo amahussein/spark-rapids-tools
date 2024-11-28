@@ -18,6 +18,7 @@ package com.nvidia.spark.rapids.tool.planparser
 
 import com.nvidia.spark.rapids.BaseTestSuite
 import com.nvidia.spark.rapids.tool.{EventLogPathProcessor, PlatformFactory, ToolTestUtils}
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification._
 
 import org.apache.spark.sql.rapids.tool.qualification.QualificationAppInfo

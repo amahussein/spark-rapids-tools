@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.internal.Logging
@@ -36,11 +37,9 @@ case class BatchScanExecParser(
     val readInfo = ReadParser.parseReadNode(node)
     // don't use the isExecSupported because we have finer grain.
     val score = ReadParser.calculateReadScoreRatio(readInfo, checker)
-    val speedupFactor = checker.getSpeedupFactor(fullExecName)
-    val overallSpeedup = Math.max((speedupFactor * score), 1.0)
 
     // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, s"${node.name} ${readInfo.format}", s"Format: ${readInfo.format}",
-      overallSpeedup, maxDuration, node.id, score > 0, None)
+    ExecInfo(node, sqlID, fullExecName, s"Format: ${readInfo.format}",
+      maxDuration, node.id, score > 0, children = None)
   }
 }

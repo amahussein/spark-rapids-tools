@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
@@ -39,7 +40,7 @@ case class SubqueryExecParser(
     // TODO: Should we also collect the "data size" metric?
     val duration = SQLPlanParser.getDriverTotalDuration(collectTimeId, app)
     // should remove is kept in 1 place. So no need to set it here.
-    ExecInfo(node, sqlID, node.name, "", 1.0, duration, node.id, isSupported = false, None)
+    ExecInfo(node, sqlID, node.name, "", duration, node.id, isSupported = false, None)
   }
 }
 

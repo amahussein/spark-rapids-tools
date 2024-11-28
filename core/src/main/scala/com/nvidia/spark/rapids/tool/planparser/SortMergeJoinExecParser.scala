@@ -16,8 +16,8 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
-
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
 
 case class SortMergeJoinExecParser(
@@ -36,14 +36,15 @@ case class SortMergeJoinExecParser(
     val exprString = node.desc.substring(trimPosition + 1)
     val (expressions, supportedJoinType) = SQLPlanParser.parseEquijoinsExpressions(exprString)
     val notSupportedExprs = expressions.filterNot(expr => checker.isExprSupported(expr))
-    val (speedupFactor, isSupported) = if (supportedJoinType &&
+    val (_, isSupported) = if (supportedJoinType &&
       checker.isExecSupported(fullExecName) && notSupportedExprs.isEmpty) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
     // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, opName, "", speedupFactor, duration, node.id, isSupported, None)
+    ExecInfo(node, sqlID, fullExecName, node.name, duration, node.id, isSupported, None,
+      expressions = expressions)
   }
 }
 

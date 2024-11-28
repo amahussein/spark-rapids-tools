@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
@@ -39,20 +40,21 @@ abstract class BroadcastNestedLoopJoinExecParserBase(
 
   override def parse: ExecInfo = {
     // BroadcastNestedLoopJoin doesn't have duration
-    val exprString = node.desc.replaceFirst("BroadcastNestedLoopJoin ", "")
+    val exprString = node.desc.replaceFirst("BroadcastNestedLoopJoin\\s*", "")
     val (buildSide, joinType) = extractBuildAndJoinTypes(exprString)
     val (expressions, supportedJoinType) =
       SQLPlanParser.parseNestedLoopJoinExpressions(exprString, buildSide, joinType)
     val notSupportedExprs = expressions.filterNot(expr => checker.isExprSupported(expr))
     val duration = None
-    val (speedupFactor, isSupported) = if (checker.isExecSupported(fullExecName) &&
+    val (_, isSupported) = if (checker.isExecSupported(fullExecName) &&
       notSupportedExprs.isEmpty && supportedJoinType) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
     // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, node.name, "", speedupFactor, duration, node.id, isSupported, None)
+    ExecInfo(node, sqlID, fullExecName, "", duration, node.id, isSupported, children = None,
+      expressions = expressions)
   }
 }
 

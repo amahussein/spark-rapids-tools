@@ -16,10 +16,11 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.{ExecInfo, UnsupportedExprOpRef}
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
-import org.apache.spark.sql.rapids.tool.UnsupportedExpr
+
 
 case class WindowGroupLimitParser(
     node: SparkPlanGraphNode,
@@ -36,10 +37,10 @@ case class WindowGroupLimitParser(
   }
 
   override def getUnsupportedExprReasonsForExec(
-      expressions: Array[String]): Seq[UnsupportedExpr] = {
+      expressions: Array[String]): Seq[UnsupportedExprOpRef] = {
     expressions.flatMap { expr =>
       if (!supportedRankingExprs.contains(expr)) {
-        Some(UnsupportedExpr(expr,
+        Some(UnsupportedExprOpRef.getOrCreate(expr,
           s"Ranking function $expr is not supported in $fullExecName"))
       } else {
         None
@@ -64,13 +65,13 @@ case class WindowGroupLimitParser(
     // Check if exec is supported and ranking expression is supported.
     val isExecSupported = checker.isExecSupported(fullExecName)
     val areAllExprsSupported = notSupportedExprs.isEmpty && validateRankingExpr(expressions)
-    val (speedupFactor, isSupported) = if (isExecSupported && areAllExprsSupported) {
+    val (_, isSupported) = if (isExecSupported && areAllExprsSupported) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
     // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, node.name, "", speedupFactor, None, node.id, isSupported, None,
-      unsupportedExprs = notSupportedExprs)
+    ExecInfo(node, sqlID, fullExecName, "", None, node.id, isSupported, None,
+      unsupportedExprs = notSupportedExprs, expressions = expressions)
   }
 }

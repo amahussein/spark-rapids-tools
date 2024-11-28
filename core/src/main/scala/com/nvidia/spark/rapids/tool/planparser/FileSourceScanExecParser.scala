@@ -16,8 +16,8 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.{ExecInfo, OpTypes}
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
-
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
 import org.apache.spark.sql.rapids.tool.{AppBase, RDDCheckHelper}
@@ -45,7 +45,7 @@ case class FileSourceScanExecParser(
       } else {
         nodeName
       }
-      ExecInfo.createExecNoNode(sqlID, newNodeName, "", 1.0, duration = None,
+      ExecInfo.createExecNoNode(sqlID, fullExecName, newNodeName, duration = None,
         node.id, OpTypes.ReadRDD, false, None)
     } else {
       val accumId = node.metrics.find(_.name == "scan time").map(_.accumulatorId)
@@ -57,13 +57,11 @@ case class FileSourceScanExecParser(
         // Use the default parser
         (fullExecName, ReadParser.parseReadNode(node))
       }
-      val speedupFactor = checker.getSpeedupFactor(execName)
       // don't use the isExecSupported because we have finer grain.
       val score = ReadParser.calculateReadScoreRatio(readInfo, checker)
-      val overallSpeedup = Math.max(speedupFactor * score, 1.0)
 
       // TODO - add in parsing expressions - average speedup across?
-      ExecInfo.createExecNoNode(sqlID, nodeName, "", overallSpeedup, maxDuration,
+      ExecInfo.createExecNoNode(sqlID, execName, nodeName, maxDuration,
         node.id, OpTypes.ReadExec, score > 0, None)
     }
   }

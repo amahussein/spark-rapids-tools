@@ -16,8 +16,8 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
-
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
 import org.apache.spark.sql.rapids.tool.AppBase
@@ -37,7 +37,7 @@ case class ShuffledHashJoinExecParser(
     val exprString = node.desc.replaceFirst("ShuffledHashJoin ", "")
     val (expressions, supportedJoinType) = SQLPlanParser.parseEquijoinsExpressions(exprString)
     val notSupportedExprs = expressions.filterNot(expr => checker.isExprSupported(expr))
-    val (speedupFactor, isSupported) = if (checker.isExecSupported(fullExecName) &&
+    val (_, isSupported) = if (checker.isExecSupported(fullExecName) &&
       notSupportedExprs.isEmpty && supportedJoinType) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
@@ -45,7 +45,7 @@ case class ShuffledHashJoinExecParser(
     }
 
     // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, node.name, "", speedupFactor,
-      maxDuration, node.id, isSupported, None)
+    ExecInfo(node, sqlID, fullExecName, node.name,
+      maxDuration, node.id, isSupported, None, expressions = expressions)
   }
 }

@@ -16,10 +16,11 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.{ExecInfo, UnsupportedExprOpRef}
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
-import org.apache.spark.sql.rapids.tool.{AppBase, UnsupportedExpr}
+import org.apache.spark.sql.rapids.tool.AppBase
 
 class GenericExecParser(
     val node: SparkPlanGraphNode,
@@ -40,13 +41,13 @@ class GenericExecParser(
     val isExecSupported = checker.isExecSupported(fullExecName) &&
       notSupportedExprs.isEmpty
 
-    val (speedupFactor, isSupported) = if (isExecSupported) {
+    val (_, isSupported) = if (isExecSupported) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
 
-    createExecInfo(speedupFactor, isSupported, duration, notSupportedExprs)
+    createExecInfo(isSupported, duration, notSupportedExprs, expressions = expressions)
   }
 
   protected def parseExpressions(): Array[String] = {
@@ -63,7 +64,7 @@ class GenericExecParser(
     node.desc.replaceFirst(s"^${node.name}\\s*", "")
   }
 
-  protected def getNotSupportedExprs(expressions: Array[String]): Seq[UnsupportedExpr] = {
+  protected def getNotSupportedExprs(expressions: Array[String]): Seq[UnsupportedExprOpRef] = {
     checker.getNotSupportedExprs(expressions)
   }
 
@@ -80,22 +81,21 @@ class GenericExecParser(
   }
 
   protected def createExecInfo(
-      speedupFactor: Double,
       isSupported: Boolean,
       duration: Option[Long],
-      notSupportedExprs: Seq[UnsupportedExpr]
-  ): ExecInfo = {
+      notSupportedExprs: Seq[UnsupportedExprOpRef],
+      expressions: Array[String]): ExecInfo = {
     ExecInfo(
       node,
       sqlID,
-      node.name,
+      fullExecName,
       "",
-      speedupFactor,
       duration,
       node.id,
       isSupported,
       None,
-      unsupportedExprs = notSupportedExprs
+      unsupportedExprs = notSupportedExprs,
+      expressions = expressions
     )
   }
 }

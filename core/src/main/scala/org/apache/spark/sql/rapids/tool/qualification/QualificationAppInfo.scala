@@ -16,18 +16,19 @@
 
 package org.apache.spark.sql.rapids.tool.qualification
 
-import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, HashMap}
 
 import com.nvidia.spark.rapids.tool.{EventLogInfo, Platform}
-import com.nvidia.spark.rapids.tool.planparser.{ExecInfo, PlanInfo, SQLPlanParser}
+import com.nvidia.spark.rapids.tool.planparser.{PlanInfo, SQLPlanParser}
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification._
 import com.nvidia.spark.rapids.tool.qualification.QualOutputWriter.DEFAULT_JOB_FREQUENCY
 import org.apache.hadoop.conf.Configuration
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.{SparkListener, SparkListenerEvent}
-import org.apache.spark.sql.rapids.tool.{AppBase, AppEventlogProcessException, ClusterSummary, FailureApp, GpuEventLogException, IncorrectAppStatusException, MlOps, MlOpsEventLogType, SupportedMLFuncsName, ToolUtils}
+import org.apache.spark.sql.rapids.tool._
 import org.apache.spark.sql.rapids.tool.annotation.{Calculated, WallClock}
 import org.apache.spark.sql.rapids.tool.store.StageModel
 
@@ -226,7 +227,7 @@ class QualificationAppInfo(
           next.flatMap(_.stages.headOption).toSeq
         } else {
           // we don't know what stage its in or its duration
-          logDebug(s"No stage associated with ${execInfo.exec} " +
+          logDebug(s"No stage associated with ${execInfo.execRef.value} " +
             s"so speedup factor isn't applied anywhere.")
           Seq.empty
         }
@@ -582,7 +583,7 @@ class QualificationAppInfo(
 
       // Get all the unsupported Expressions from the plan
       val unSupportedExprs = origPlanInfos.map(_.execInfo.flatMap(
-        _.unsupportedExprs.map(_.exprName))).flatten.filter(_.nonEmpty).toSet.mkString(";")
+        _.unsupportedExprs.map(_.value))).flatten.filter(_.nonEmpty).toSet.mkString(";")
         .trim.replaceAll("\n", "").replace(",", ":")
 
       // TODO - this is not correct as this is using the straight stage wall

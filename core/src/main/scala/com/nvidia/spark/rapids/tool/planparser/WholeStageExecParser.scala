@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.internal.Logging
@@ -50,20 +51,17 @@ abstract class WholeStageExecParserBase(
     childNodes.foreach(_.appendToStages(stagesInNode))
     // if any of the execs in WholeStageCodegen supported mark this entire thing as supported
     val anySupported = childNodes.exists(_.isSupported == true)
-    val unSupportedExprsArray =
-      childNodes.filter(_.unsupportedExprs.nonEmpty).flatMap(x => x.unsupportedExprs).toArray
     // average speedup across the execs in the WholeStageCodegen for now
-    val supportedChildren = childNodes.filterNot(_.shouldRemove)
-    val avSpeedupFactor = SQLPlanParser.averageSpeedup(supportedChildren.map(_.speedupFactor))
+    //val supportedChildren = childNodes.filterNot(_.shouldRemove)
     // can't rely on the wholeStagecodeGen having a stage if children do so aggregate them together
     // for now
-    val allStagesIncludingChildren = childNodes.flatMap(_.stages).toSet ++ stagesInNode.toSet
+    val allStagesIncludingChildren = childNodes.flatMap(_.stages).toSet ++ stagesInNode
     // Finally, the node should be marked as shouldRemove when all the children of the
     // wholeStageCodeGen are marked as shouldRemove.
     val removeNode = isDupNode || childNodes.forall(_.shouldRemove)
-    val execInfo = ExecInfo(node, sqlID, node.name, node.name, avSpeedupFactor, maxDuration,
+    val execInfo = ExecInfo(node, sqlID, fullExecName, node.name, maxDuration,
       node.id, anySupported, Some(childNodes), allStagesIncludingChildren,
-      shouldRemove = removeNode, unsupportedExprs = unSupportedExprsArray)
+      shouldRemove = removeNode)
     Seq(execInfo)
   }
 }

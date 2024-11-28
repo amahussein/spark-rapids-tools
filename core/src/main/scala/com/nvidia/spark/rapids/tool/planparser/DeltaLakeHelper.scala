@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.{ExecInfo, OpTypes}
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.execution.ui.{SparkPlanGraphCluster, SparkPlanGraphNode}
@@ -35,19 +36,18 @@ class DLWriteWithFormatAndSchemaParser(node: SparkPlanGraphNode,
     // The node description has information about the table schema and its format.
     // We do not want the op to me marked as RDD or UDF if the node description contains some
     // expressions that match UDF/RDD.
-    val (speedupFactor, isExecSupported) = if (checker.isExecSupported(fullExecName)) {
+    val (_, isExecSupported) = if (checker.isExecSupported(fullExecName)) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
     val dataFormat = DeltaLakeHelper.getWriteFormat
     val writeSupported = checker.isWriteFormatSupported(dataFormat)
-    val finalSpeedupFactor = if (writeSupported) speedupFactor else 1.0
 
     // execs like SaveIntoDataSourceCommand has prefix "Execute". So, we need to get rid of it.
     val nodeName = node.name.replace("Execute ", "")
     ExecInfo.createExecNoNode(sqlID, nodeName,
-      s"Format: $dataFormat", finalSpeedupFactor, None, node.id, OpTypes.WriteExec,
+      s"Format: $dataFormat", None, node.id, OpTypes.WriteExec,
       isSupported = writeSupported && isExecSupported, children = None)
   }
 }

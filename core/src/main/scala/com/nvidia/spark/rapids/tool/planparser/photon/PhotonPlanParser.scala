@@ -17,6 +17,7 @@
 package com.nvidia.spark.rapids.tool.planparser.photon
 
 import com.nvidia.spark.rapids.tool.planparser._
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.rapids.tool.AppBase

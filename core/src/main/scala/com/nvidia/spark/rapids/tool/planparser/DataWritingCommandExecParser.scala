@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.{ExecInfo, OpTypes}
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
@@ -35,13 +36,11 @@ case class DataWritingCommandExecParser(
     val wStub = DataWritingCommandExecParser.getWriteCMDWrapper(node).get
     val writeSupported = checker.isWriteFormatSupported(wStub.dataFormat)
     val duration = None
-    val speedupFactor = checker.getSpeedupFactor(wStub.mappedExec)
-    val finalSpeedup = if (writeSupported) speedupFactor else 1
     // TODO - add in parsing expressions - average speedup across?
     // We do not want to parse the node description to avoid mistakenly marking the node as RDD/UDF
-    ExecInfo.createExecNoNode(sqlID, s"${node.name.trim} ${wStub.dataFormat.toLowerCase.trim}",
+    ExecInfo.createExecNoNode(sqlID, fullExecName,
       s"Format: ${wStub.dataFormat.toLowerCase.trim}",
-      finalSpeedup, duration, node.id, opType = OpTypes.WriteExec, writeSupported,  None)
+      duration, node.id, opType = OpTypes.WriteExec, writeSupported, children = None)
   }
 }
 

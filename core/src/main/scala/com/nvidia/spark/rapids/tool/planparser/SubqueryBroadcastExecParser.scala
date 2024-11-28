@@ -16,8 +16,8 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
-
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
 import org.apache.spark.sql.rapids.tool.AppBase
 
@@ -33,13 +33,12 @@ case class SubqueryBroadcastExecParser(
     val collectTimeId =
       node.metrics.find(_.name.contains("time to collect")).map(_.accumulatorId)
     val duration = SQLPlanParser.getDriverTotalDuration(collectTimeId, app)
-    val (filterSpeedupFactor, isSupported) = if (checker.isExecSupported(fullExecName)) {
+    val (_, isSupported) = if (checker.isExecSupported(fullExecName)) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
     // TODO - check is broadcast associated can be replaced
-    // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, node.name, "", filterSpeedupFactor, duration, node.id, isSupported, None)
+    ExecInfo(node, sqlID, fullExecName, node.name, duration, node.id, isSupported, None)
   }
 }

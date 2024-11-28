@@ -16,6 +16,7 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
 
 import org.apache.spark.internal.Logging
@@ -39,13 +40,13 @@ case class BroadcastExchangeExecParser(
     val maxBuildTime = SQLPlanParser.getDriverTotalDuration(buildTimeId, app)
     val maxBroadcastTime = SQLPlanParser.getDriverTotalDuration(broadcastTimeId, app)
     val duration = (maxCollectTime ++ maxBuildTime ++ maxBroadcastTime).reduceOption(_ + _)
-    val (filterSpeedupFactor, isSupported) = if (checker.isExecSupported(fullExecName)) {
+    val (_, isSupported) = if (checker.isExecSupported(fullExecName)) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
     // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, node.name, "", filterSpeedupFactor,
-      duration, node.id, isSupported, None)
+    ExecInfo(node, sqlID, fullExecName, "",
+      duration, node.id, isSupported, children = None)
   }
 }

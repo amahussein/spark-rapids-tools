@@ -16,8 +16,8 @@
 
 package com.nvidia.spark.rapids.tool.planparser
 
+import com.nvidia.spark.rapids.tool.planparser.ops.ExecInfo
 import com.nvidia.spark.rapids.tool.qualification.PluginTypeChecker
-
 import org.apache.spark.sql.execution.ui.SparkPlanGraphNode
 
 case class BroadcastHashJoinExecParser(
@@ -30,16 +30,17 @@ case class BroadcastHashJoinExecParser(
   override def parse: ExecInfo = {
     // BroadcastHashJoin doesn't have duration
     val duration = None
-    val exprString = node.desc.replaceFirst("BroadcastHashJoin ", "")
+    val exprString = node.desc.replaceFirst("BroadcastHashJoin\\s*", "")
     val (expressions, supportedJoinType) = SQLPlanParser.parseEquijoinsExpressions(exprString)
     val notSupportedExprs = expressions.filterNot(expr => checker.isExprSupported(expr))
-    val (speedupFactor, isSupported) = if (checker.isExecSupported(fullExecName) &&
+    val (_, isSupported) = if (checker.isExecSupported(fullExecName) &&
       notSupportedExprs.isEmpty && supportedJoinType) {
       (checker.getSpeedupFactor(fullExecName), true)
     } else {
       (1.0, false)
     }
     // TODO - add in parsing expressions - average speedup across?
-    ExecInfo(node, sqlID, node.name, "", speedupFactor, duration, node.id, isSupported, None)
+    ExecInfo(node, sqlID, fullExecName, "", duration, node.id, isSupported, children = None,
+      expressions = expressions)
   }
 }
