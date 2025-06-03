@@ -232,3 +232,19 @@ class SubmissionMode(EnumeratedType):
     @classmethod
     def get_default(cls) -> 'SubmissionMode':
         return cls.LOCAL
+
+
+##################
+# Core Tools Enums
+##################
+
+class AppCoreStatusEnum(EnumeratedType):
+    """Values used to define the status of the applications as processed by the core-tool module"""
+    SUCCESS = 'SUCCESS'
+    FAILURE = 'FAILURE'
+    SKIPPED = 'SKIPPED'
+    UNKNOWN = 'UNKNOWN'
+
+    @classmethod
+    def get_default(cls) -> 'AppCoreStatusEnum':
+        return cls.UNKNOWN
