@@ -14,9 +14,15 @@
 
 toolOutput:
   completeOutput: true
+  # This is used as a way to read subfolder from the exec_directory ( qual_<uuid> )
   subFolder: rapids_4_spark_qualification_output
+  # Used just in one place, read_qualification_metric_file
+  # The only file that is read from raw_metrics is application_information.csv
   metricsSubFolder: raw_metrics
   textFormat:
+    # Used in the _generate_recommended_configs_report
+    # File is read and configs are appended and files is rewritten
+    # Don't know if this is relevant post auto-tuner??
     summaryLog:
       fileName: rapids_4_spark_qualification_output.log
     log4jFileName: rapids_4_spark_qualification_stderr.log
@@ -83,11 +89,17 @@ sparkRapids:
   outputDocURL: 'https://docs.nvidia.com/spark-rapids/user-guide/latest/qualification/quickstart.html#qualification-output'
   enableAutoTuner: true
   requireEventLogs: true
+  # _process_custom_args processes these params
+  # gpu, device, workersPerNide, cudaVersion
+  # I could not find the usage of these post setting
+  # them in the context once
   gpu:
     device: 't4'
     workersPerNode: 2
     cudaVersion: '11.5'
   cli:
+    # did not find the usage of this costSavingsSettings
+    # not even the use of the toggle
     defaults:
       costSavingsSettings: #temporrary settings to control the code behavior until the cost savings feature is fully removed
         enabled: false
@@ -126,6 +138,9 @@ sparkRapids:
 local:
   output:
     cleanUp: true
+    # Local:output:files is consumed during _process_output
+    # A dictionary of user_tools related files(summary, statistics) created
+    # Folders that do not exist are created
     files:
       summary:
         name: qualification_summary.csv
@@ -170,6 +185,7 @@ local:
       appsStatusReport:
         name: 'rapids_4_spark_qualification_output/rapids_4_spark_qualification_output_status.csv'
         outputComment: "Application status report"
+    # No usage costcolumns in the code
     costColumns:
       - 'Savings Based Recommendation'
       - 'Estimated App Cost'
@@ -177,8 +193,10 @@ local:
       - 'Estimated GPU Savings(%)'
       - 'Estimated Job Frequency (monthly)'
       - 'Annual Cost Savings'
+    # No usage of savingColumn in the code
     savingColumn: 'Estimated GPU Savings(%)'
     savingRecommendColumn: 'Savings Based Recommendation'
+    # Not used anymore in qual code - summaryColumns
     summaryColumns: #columns to be displayed on the stdout as part of the final report
       savingsReportEnabledTrue: #columns with savings estimates enabled
         - 'App ID'
@@ -194,6 +212,8 @@ local:
         - 'App Duration'
         - 'Estimated GPU Duration'
         - 'Estimated GPU Speedup'
+    # Used in _gen_output_tree which bubbles up to _process_output
+    # generate_report()
     treeDirectory:
       enabled: true
       depthLevel: 2
@@ -210,6 +230,10 @@ local:
           - '^(\$+).*'
           - '^.+(_\$folder\$)$'
           - '^rapids_4_spark_qualification_output.*'
+    # Mask, inputColumns, groupingColumns, resultColumnName, percentResultColumnName
+    # These are used during heuristic processing
+    # mask is used as means to filter out which rows to consider
+    # during unsupported ops percentage calculation
     unsupportedOperators:
       mask:
         - operator: 'NOT_EQUAL'
@@ -236,6 +260,10 @@ local:
           - 'App Duration'
       resultColumnName: 'Unsupported Operators Stage Duration'
       percentResultColumnName: 'Unsupported Operators Stage Duration Percent'
+    # All the columns in the context of the top candidates
+    # seem relevant to the final report including Core Threshold
+    # There was a debate if we want to move the core threshold
+    # to heuristic part and not have it just in the top candidates
     topCandidates:
       categoryColumnName: 'Estimated GPU Speedup Category'
       outputColumns:
@@ -266,6 +294,11 @@ local:
       totalCoreSecCol: 'Total Core Seconds'
       # This is total core seconds of an 8-core machine running for 24 hours
       totalCoreSecThreshold: !ENV ${RAPIDS_USER_TOOLS_CORE_SECONDS_THRESHOLD:691200}
+    # Both speedupCategories and additionalHeuristics
+    # are relevant. They are used in post processing, once predicted
+    # speedups are available. The speedupCategories are used as a way to
+    # add brackets. Additional heuristics mainly for controlling
+    # spill thresholds and unsupported operators
     speedupCategories:
       speedupColumnName: 'Estimated GPU Speedup'
       categoryColumnName: 'Estimated GPU Speedup Category'
@@ -342,6 +375,9 @@ local:
           - 'Aggregate'
           - 'Join'
           - 'Sort'
+    # This is used in the predict method for rendering the intermdiate
+    # prediction output. All the files mentioned are created first
+    # and then dumped into the directory.
     predictionModel:
       outputDirectory: 'xgboost_predictions'
       files:
@@ -355,6 +391,8 @@ local:
           name: 'shap_values.csv'
         featureImportance:
           name: 'feature_importance.csv'
+      # This is used post prediction output, to rename the columns
+      # As well as extracting just a subset of columns
       updateResult:
         subsetColumns:
           - 'appId'
@@ -375,6 +413,7 @@ local:
         - 'Recommended Worker Node Type'
         - 'Recommended Cores Per Executor'
 
+# This is used in create work_dir to create the qual_<uuid>
 platform:
   shortName: 'qual'
   outputDir: qual-tool-output

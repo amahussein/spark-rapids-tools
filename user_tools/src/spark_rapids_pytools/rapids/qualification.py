@@ -378,6 +378,10 @@ class Qualification(RapidsJarTool):
                                     comments=report_comments)
 
     def _process_output(self) -> None:
+        # this reads from the qualification-conf.yaml to build a JSON dictionary
+        # containing the information regarding the tools output files
+        # This is consumed later in _build_global_report_summary
+        # where the intermediate f
         output_files_info = self.__build_output_files_info()
 
         def create_stdout_table_pprinter(total_apps: pd.DataFrame,
