@@ -29,10 +29,12 @@ from spark_rapids_pytools.common.prop_manager import JSONPropertiesContainer, co
 from spark_rapids_pytools.common.sys_storage import FSUtil
 from spark_rapids_pytools.common.utilities import Utils, TemplateGenerator
 from spark_rapids_pytools.rapids.rapids_tool import RapidsJarTool
+from spark_rapids_tools import CspPath
 from spark_rapids_tools.enums import QualFilterApp, QualEstimationModel, SubmissionMode
 from spark_rapids_tools.storagelib import CspFs
 from spark_rapids_tools.tools.additional_heuristics import AdditionalHeuristics
 from spark_rapids_tools.tools.cluster_config_recommender import ClusterConfigRecommender
+from spark_rapids_tools.tools.core.qual_handler import QualCoreHandler
 from spark_rapids_tools.tools.qualx.qualx_main import predict
 from spark_rapids_tools.tools.qualification_stats_report import SparkQualificationStats
 from spark_rapids_tools.tools.speedup_category import SpeedupCategory
@@ -378,6 +380,10 @@ class Qualification(RapidsJarTool):
                                     comments=report_comments)
 
     def _process_output(self) -> None:
+        # Build the paths where the wrapper output is generated
+        qual_core_handler = QualCoreHandler(CspPath(self.ctxt.get_output_folder()))
+        qual_core_handler.dump_output_path()
+
         output_files_info = self.__build_output_files_info()
 
         def create_stdout_table_pprinter(total_apps: pd.DataFrame,
@@ -507,7 +513,7 @@ class Qualification(RapidsJarTool):
 
     def __build_output_files_info(self) -> JSONPropertiesContainer:
         """
-        Build the full output path for the output files.
+        Build the full output path for the output files of the wrapper.
         """
         files_info = self.ctxt.get_value('local', 'output', 'files')
         output_folder = self.ctxt.get_output_folder()

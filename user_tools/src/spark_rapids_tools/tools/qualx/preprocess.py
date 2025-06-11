@@ -451,27 +451,29 @@ def load_qtool_execs(qtool_execs: List[str]) -> Optional[pd.DataFrame]:
     Load supported stage info from qtool output in a form that can be merged with profiler data
     to aggregate features and durations only over supported stages.
     """
-    node_level_supp = None
 
     def _is_ignore_no_perf(action: str) -> bool:
         return action == 'IgnoreNoPerf'
 
+    node_level_supp = None
     if qtool_execs:
-        exec_info = pd.concat([pd.read_csv(f) for f in qtool_execs])
-        node_level_supp = exec_info.copy()
-        node_level_supp['Exec Is Supported'] = (
-            node_level_supp['Exec Is Supported']
-            | node_level_supp['Action'].apply(_is_ignore_no_perf)
-            | node_level_supp['Exec Name']
-            .astype(str)
-            .apply(lambda x: x.startswith('WholeStageCodegen'))
-        )
-        node_level_supp = (
-            node_level_supp[['App ID', 'SQL ID', 'SQL Node Id', 'Exec Is Supported']]
-            .groupby(['App ID', 'SQL ID', 'SQL Node Id'])
-            .agg('all')
-            .reset_index(level=[0, 1, 2])
-        )
+        node_level_supp = pd.DataFrame()
+        for d in qtool_execs:
+            execs_csv_files = glob.glob(f'{d}/**/execs.csv', recursive=False)
+            # for each exec_files, load and merge with exec_info
+            for f in execs_csv_files:
+                # get the appID from the file path
+                app_id = os.path.basename(os.path.dirname(f))
+                exec_df = pd.read_csv(f)
+                exec_df['Exec Is Supported'] = (
+                        exec_df['Exec Is Supported']
+                        | exec_df['Action'].apply(_is_ignore_no_perf)
+                        | exec_df['Exec Name'].astype(str).apply(lambda x: x.startswith('WholeStageCodegen'))
+                )
+                filtered_exec_df = exec_df[['SQL ID', 'SQL Node Id', 'Exec Is Supported']]
+                filtered_exec_df.insert(loc=0, column='App ID', value=app_id)
+                node_level_supp = pd.concat([node_level_supp, filtered_exec_df])
+        node_level_supp = node_level_supp.reset_index(drop=True)
     return node_level_supp
 
 

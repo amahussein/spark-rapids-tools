@@ -165,25 +165,26 @@ def _get_qual_data(qual: Optional[str]) -> Tuple[
         qual, RegexPattern.rapids_qual.match, return_directories=True
     )
     # load metrics directory from all qualification paths.
-    # metrics follow the pattern 'qual_2024xx/rapids_4_spark_qualification_output/raw_metrics'
+    # metrics follow the pattern 'qual_2024xx/qual_core_output/raw_metrics'
     qual_metrics = [
         path
         for q in qual_list
         for path in find_paths(q, RegexPattern.qual_tool_metrics.match, return_directories=True)
     ]
-    qual_execs = [
-        os.path.join(
-            q,
-            'rapids_4_spark_qualification_output_execs.csv',
-        )
+    # load qual supported execs from all the qualification apps.
+    # this requires finding all the csv files that match the pattern 'qual_2024xx/qual_core_output/qual_metrics/execs.csv'
+    qual_execs_directories = [
+        path
         for q in qual_list
+        for path in find_paths(q, RegexPattern.qual_core_metrics.match, return_directories=True)
     ]
-    node_level_supp = load_qtool_execs(qual_execs)
+    # load all the execs.csv
+    node_level_supp = load_qtool_execs(qual_execs_directories)
 
     # load qual tool per-app predictions
     qualtool_output = load_qual_csv(
         qual_list,
-        'rapids_4_spark_qualification_output.csv',
+        'apps_summary.csv',
         ['App Name', 'App ID', 'App Duration'],
     )
 

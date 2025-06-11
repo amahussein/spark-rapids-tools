@@ -150,8 +150,10 @@ remove_web_dependencies() {
 
 # Pre-build setup
 pre_build() {
+  echo "upgrade pip"
+  pip install --upgrade pip
   rm -rf build/ dist/
-  pip install build -e .
+  pip install build -e .[qualx,test]
 }
 
 # Build process

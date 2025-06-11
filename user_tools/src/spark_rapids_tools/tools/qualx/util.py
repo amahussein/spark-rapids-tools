@@ -53,7 +53,8 @@ class RegexPattern:
     profile = re.compile(r'prof_[0-9]+_[0-9a-zA-Z]+')
     qual_tool = re.compile(r'qual_[0-9]+_[0-9a-zA-Z]+')
     rapids_profile = re.compile(r'rapids_4_spark_profile')
-    rapids_qual = re.compile(r'rapids_4_spark_qualification_output')
+    rapids_qual = re.compile(r'qual_core_output')
+    qual_core_metrics = re.compile(r'qual_metrics')
     qual_tool_metrics = re.compile(r'raw_metrics')
 
 
