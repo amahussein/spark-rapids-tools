@@ -15,7 +15,7 @@
 toolOutput:
   completeOutput: true
   # This is used as a way to read subfolder from the exec_directory ( qual_<uuid> )
-  subFolder: rapids_4_spark_qualification_output
+  subFolder:
   # Used just in one place, read_qualification_metric_file
   # The only file that is read from raw_metrics is application_information.csv
   metricsSubFolder: raw_metrics

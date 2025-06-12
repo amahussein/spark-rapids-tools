@@ -381,7 +381,6 @@ class Qualification(RapidsJarTool):
         # this reads from the qualification-conf.yaml to build a JSON dictionary
         # containing the information regarding the tools output files
         # This is consumed later in _build_global_report_summary
-        # where the intermediate f
         output_files_info = self.__build_output_files_info()
 
         def create_stdout_table_pprinter(total_apps: pd.DataFrame,
@@ -400,7 +399,72 @@ class Qualification(RapidsJarTool):
         if not self._evaluate_rapids_jar_tool_output_exist():
             return
 
-        df = self._read_qualification_output_file('summaryReport')
+        # Using QualCoreTableLoader to get table definitions from YAML
+        from spark_rapids_tools.tools.core import QualCoreTableLoader
+        table_loader = QualCoreTableLoader()
+        
+        # Get table definitions and create a helper function to read files by label
+        def read_qualification_file_by_label(label: str, file_format: str = 'csv') -> pd.DataFrame:
+            table_def = table_loader.get_table_by_label(label)
+            if table_def.scope == 'global':
+                base_path = FSUtil.build_path(self.ctxt.get_rapids_output_folder(), 'qual_core_output')
+                report_file_path = FSUtil.build_path(base_path, table_def.fileName)
+                
+                if file_format.lower() == 'json' or table_def.fileFormat == 'JSON':
+                    import json
+                    with open(report_file_path, 'r', encoding='utf-8') as f:
+                        json_data = json.load(f)
+                    return pd.json_normalize(json_data) if json_data else pd.DataFrame()
+                else:
+                    return pd.read_csv(report_file_path)
+                    
+            elif table_def.scope == 'per-app':
+                qual_core_path = FSUtil.build_path(self.ctxt.get_rapids_output_folder(), 'qual_core_output')
+                qual_metrics_path = FSUtil.build_path(qual_core_path, 'qual_metrics')
+                
+                # Read from all application directories and combine
+                combined_dfs = []
+                try:
+                    from pathlib import Path
+                    metrics_dir = Path(qual_metrics_path)
+                    
+                    for app_dir in metrics_dir.iterdir():
+                        if app_dir.is_dir():
+                            app_id = app_dir.name  # Extract App ID from directory name
+                            app_file_path = app_dir / table_def.fileName
+                            if app_file_path.exists():
+                                try:
+                                    if file_format.lower() == 'json' or table_def.fileFormat == 'JSON':
+                                        import json
+                                        with open(app_file_path, 'r', encoding='utf-8') as f:
+                                            json_data = json.load(f)
+                                        if json_data:
+                                            app_df = pd.json_normalize(json_data)
+                                            combined_dfs.append(app_df)
+                                    else:
+                                        app_df = pd.read_csv(app_file_path)
+                                        # Add App ID column as the first column to maintain conformity
+                                        app_df.insert(0, 'App ID', app_id)
+                                        combined_dfs.append(app_df)
+                                except Exception as e:  # pylint: disable=broad-except
+                                    self.logger.warning('Failed to read file %s: %s', app_file_path, e)
+                    
+                    # Combine all DataFrames
+                    if combined_dfs:
+                        return pd.concat(combined_dfs, ignore_index=True)
+                    else:
+                        self.logger.warning('No valid files found for label: %s', label)
+                        return pd.DataFrame()
+                        
+                except Exception as e:  # pylint: disable=broad-except
+                    self.logger.error('Error reading per-app files for label %s: %s', label, e)
+                    return pd.DataFrame()
+            else:
+                return pd.DataFrame()
+
+        df = read_qualification_file_by_label('qualCoreCSVSummary')
+        # df = self._read_qualification_output_file('summaryReport')
+        
         # 1. Operations related to XGboost modelling
         if not df.empty and self.ctxt.get_ctxt('estimationModelArgs')['xgboostEnabled']:
             try:
@@ -416,7 +480,9 @@ class Qualification(RapidsJarTool):
 
         # 2. Operations related to cluster information
         try:
-            cluster_info_df = self._read_qualification_output_file('clusterInformation')
+            cluster_info_df = read_qualification_file_by_label('clusterInfoJSONReport', 'json')
+            # cluster_info_df = self._read_qualification_output_file('clusterInformation')
+            
             # Merge using a left join on 'App Name' and 'App ID'. This ensures `df` includes all cluster
             # info columns, even if `cluster_info_df` is empty.
             df = pd.merge(df, cluster_info_df, on=['App Name', 'App ID'], how='left')
@@ -427,8 +493,10 @@ class Qualification(RapidsJarTool):
                               'Reason - %s:%s', type(e).__name__, e)
 
         # 3. Operations related to reading qualification output (unsupported operators and apps status)
-        unsupported_ops_df = self._read_qualification_output_file('unsupportedOperatorsReport')
-        apps_status_df = self._read_qualification_output_file('appsStatusReport')
+        unsupported_ops_df = read_qualification_file_by_label('unsupportedOpsCSVReport')
+        apps_status_df = read_qualification_file_by_label('qualCoreCSVStatus')
+        # unsupported_ops_df = self._read_qualification_output_file('unsupportedOperatorsReport')
+        # apps_status_df = self._read_qualification_output_file('appsStatusReport')
 
         # 4. Operations related to output
         report_gen = self.__build_global_report_summary(df, apps_status_df, unsupported_ops_df, output_files_info)
