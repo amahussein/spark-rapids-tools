@@ -97,6 +97,104 @@ qualTableDefinitions:
         dataType: long
         description: >-
           TBA
+  - label: qualCoreCSVDetailedSummary
+    description: >-
+      Detailed summary information for each application analyzed by the qualification tool, including comprehensive metrics and analysis details
+    fileName: apps_detailed_summary.csv
+    scope: global
+    columns:
+      - name: App Name
+        dataType: string
+        description: >-
+          The name of the Spark application
+      - name: App ID
+        dataType: string
+        description: >-
+          The unique identifier for the Spark application
+      - name: Attempt ID
+        dataType: string
+        description: >-
+          TBD
+      - name: SQL DF Duration
+        dataType: string
+        description: >-
+          TBD
+      - name: SQL Dataframe Task Duration
+        dataType: long
+        description: >-
+          TBD
+      - name: App Duration
+        dataType: string
+        description: >-
+          App Duration
+      - name: GPU Opportunity
+        dataType: string
+        description: >-
+          TBD
+      - name: Executor CPU Time Percent
+        dataType: string
+        description: >-
+          TBD
+      - name: SQL Ids with Failures
+        dataType: string
+        description: >-
+          TBD
+      - name: Unsupported Read File Formats and Types
+        dataType: string
+        description: >-
+          TBD
+      - name: Unsupported Write Data Format
+        dataType: string
+        description: >-
+          TBD
+      - name: Complex Types
+        dataType: string
+        description: >-
+          TBD
+      - name: Nested Complex Types
+        dataType: string
+        description: >-
+          TBD
+      - name: Potential Problems
+        dataType: string
+        description: >-
+          TBD
+      - name: Longest SQL Duration
+        dataType: string
+        description: >-
+          TBD
+      - name: SQL Stage Durations Sum
+        dataType: long
+        description: >-
+          TBD
+      - name: NONSQL Task Duration Plus Overhead
+        dataType: long
+        description: >-
+          TBD
+      - name: Unsupported Task Duration
+        dataType: long
+        description: >-
+          TBD
+      - name: Supported SQL DF Task Duration
+        dataType: long
+        description: >-
+          TBD
+      - name: App Duration Estimated
+        dataType: long
+        description: >-
+          TBD
+      - name: Unsupported Execs
+        dataType: string
+        description: >-
+          TBD
+      - name: Unsupported Expressions
+        dataType: string
+        description: >-
+          TBD
+      - name: Total Core Seconds
+        dataType: long
+        description: >-
+          TBD
   # the following table seems to be useless
   - label: perSqlCSVReport
     description:

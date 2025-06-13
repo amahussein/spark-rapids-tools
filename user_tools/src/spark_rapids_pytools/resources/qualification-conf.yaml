@@ -18,7 +18,7 @@ toolOutput:
   subFolder:
   # Used just in one place, read_qualification_metric_file
   # The only file that is read from raw_metrics is application_information.csv
-  metricsSubFolder: raw_metrics
+  metricsSubFolder: qual_core_output/raw_metrics
   textFormat:
     # Used in the _generate_recommended_configs_report
     # File is read and configs are appended and files is rewritten

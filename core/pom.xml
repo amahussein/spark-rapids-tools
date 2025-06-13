@@ -546,7 +546,7 @@
         <tools.qual.test.generate.golden.dir>${project.basedir}/golden-sets/${buildver}/qual</tools.qual.test.generate.golden.dir>
         <!-- enable generation of golden-sets -->
         <tools.qual.test.generate.golden.enable>false</tools.qual.test.generate.golden.enable>
-        <tools.qual.test.keep.per_app.summary>false</tools.qual.test.keep.per_app.summary>
+        <tools.qual.test.keep.per_app.summary>true</tools.qual.test.keep.per_app.summary>
         <!-- enable/disable cleanup of temporary directories created during testing -->
         <tools.test.cleanup.tmp.dir>true</tools.test.cleanup.tmp.dir>
     </properties>

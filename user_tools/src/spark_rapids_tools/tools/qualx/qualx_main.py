@@ -160,32 +160,41 @@ def _get_qual_data(qual: Optional[str]) -> Tuple[
     if not qual:
         return None, None, []
 
-    # load qual tool execs
+    # load qual tool using the new per-app structure
     qual_list = find_paths(
         qual, RegexPattern.rapids_qual.match, return_directories=True
     )
-    # load metrics directory from all qualification paths.
-    # metrics follow the pattern 'qual_2024xx/rapids_4_spark_qualification_output/raw_metrics'
+    
+    if not qual_list:
+        return None, None, []
+    
+    # Use QualOutputFileReader for efficient file reading from new structure
+    from spark_rapids_tools.tools.core import QualOutputFileReader
+    
+    # QualOutputFileReader expects the parent directory, not the qual_core_output directory itself
+    # qual_list contains paths like '/path/to/qual_output/qual_core_output'
+    # We need to pass the parent directory '/path/to/qual_output'
+    output_directory = os.path.dirname(qual_list[0])
+    reader = QualOutputFileReader(output_directory)
+    
+    # Load execs data from per-app structure (qual_core_output/qual_metrics/application_<id>/execs.csv)
+    node_level_supp = reader.read_table_by_label('execCSVReport')
+    
+    # Load summary data from global structure (qual_core_output/apps_summary.csv)
+    qualtool_output = reader.read_table_by_label('qualCoreCSVDetailedSummary')
+    # Filter to required columns if they exist
+    required_cols = ['App Name', 'App ID', 'App Duration']
+    available_cols = [col for col in required_cols if col in qualtool_output.columns]
+    if available_cols:
+        qualtool_output = qualtool_output[available_cols]
+    
+    # Load metrics directories from qual_core_output structure
+    # metrics follow the pattern 'qual_output/qual_core_output/qual_metrics'
     qual_metrics = [
         path
         for q in qual_list
         for path in find_paths(q, RegexPattern.qual_tool_metrics.match, return_directories=True)
     ]
-    qual_execs = [
-        os.path.join(
-            q,
-            'rapids_4_spark_qualification_output_execs.csv',
-        )
-        for q in qual_list
-    ]
-    node_level_supp = load_qtool_execs(qual_execs)
-
-    # load qual tool per-app predictions
-    qualtool_output = load_qual_csv(
-        qual_list,
-        'rapids_4_spark_qualification_output.csv',
-        ['App Name', 'App ID', 'App Duration'],
-    )
 
     return node_level_supp, qualtool_output, qual_metrics
 

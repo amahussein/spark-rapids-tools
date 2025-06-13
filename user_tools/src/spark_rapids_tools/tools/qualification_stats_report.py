@@ -66,40 +66,40 @@ App ID  SQL ID   Operator  Count StageTaskDuration TotalSQLTaskDuration  % of To
 
     def _read_csv_files(self) -> None:
         self.logger.info('Reading CSV files...')
-        if self.qual_output is None:
-            qual_output_dir = self.ctxt.get_rapids_output_folder()
+        
+        # Determine the output directory to read from
+        if self.qual_output is not None:
+            output_dir = self.qual_output
         else:
-            qual_output_dir = self.qual_output
-
-        unsupported_operator_report_file = self.ctxt.get_value(
-            'toolOutput', 'csv', 'unsupportedOperatorsReport', 'fileName')
-        rapids_unsupported_operators_file = FSUtil.build_path(
-            qual_output_dir, unsupported_operator_report_file)
-        # load the unsupported operators and drop operators that have no names.
+            output_dir = self.ctxt.get_rapids_output_folder()
+        
+        # Use the efficient QualOutputFileReader instead of creating Qualification instances
+        from spark_rapids_tools.tools.core import QualOutputFileReader
+        reader = QualOutputFileReader(output_dir)
+        
+        # Load the unsupported operators and drop operators that have no names
         self.unsupported_operators_df = (
-            pd.read_csv(rapids_unsupported_operators_file,
-                        dtype={'Unsupported Operator': str})).dropna(subset=['Unsupported Operator'])
+            reader.read_table_by_label('unsupportedOpsCSVReport')
+            .dropna(subset=['Unsupported Operator']))
+        self.unsupported_operators_df['Unsupported Operator'] = self.unsupported_operators_df['Unsupported Operator'].astype(str)
 
-        stages_report_file = self.ctxt.get_value('toolOutput', 'csv', 'stagesInformation',
-                                                 'fileName')
-        rapids_stages_file = FSUtil.build_path(qual_output_dir, stages_report_file)
-        self.stages_df = pd.read_csv(rapids_stages_file)
+        # Load stages data
+        self.stages_df = reader.read_table_by_label('stagesCSVReport')
 
-        rapids_execs_file = self.ctxt.get_value('toolOutput', 'csv', 'execsInformation',
-                                                'fileName')
         # Load the execs CSV file and drop execs that have no stages or name
         self.execs_df = (
-            pd.read_csv(FSUtil.build_path(qual_output_dir, rapids_execs_file),
-                        dtype={'Exec Name': str,
-                               'Exec Stages': str,
-                               'Exec Children': str,
-                               'Exec Children Node Ids': str})
+            reader.read_table_by_label('execCSVReport')
             .dropna(subset=['Exec Stages', 'Exec Name']))
+        self.execs_df['Exec Stages'] = self.execs_df['Exec Stages'].astype(str)
+        self.execs_df['Exec Name'] = self.execs_df['Exec Name'].astype(str)
+        self.execs_df['Exec Children'] = self.execs_df['Exec Children'].astype(str)
+        self.execs_df['Exec Children Node Ids'] = self.execs_df['Exec Children Node Ids'].astype(str)
+        
         self.logger.info('Reading CSV files completed.')
 
     def _convert_durations(self) -> None:
         # Convert durations from milliseconds to seconds
-        self.stages_df[['Stage Task Duration', 'Unsupported Task Duration']] /= 1000
+        self.stages_df[['Stage Task Duration']] /= 1000
 
     def _preprocess_dataframes(self) -> None:
         self.logger.info('Preprocessing dataframes...')
@@ -114,7 +114,8 @@ App ID  SQL ID   Operator  Count StageTaskDuration TotalSQLTaskDuration  % of To
         self.execs_df['Exec Stages'] = self.execs_df['Exec Stages'].str.split(':')
         self.execs_df = (self.execs_df.explode('Exec Stages').
                          rename(columns={'Exec Stages': 'Stage ID'}))
-        self.execs_df['Stage ID'] = self.execs_df['Stage ID'].astype(int)
+        # Convert Stage ID to int, handling float-like strings (e.g., "1.0" -> 1)
+        self.execs_df['Stage ID'] = pd.to_numeric(self.execs_df['Stage ID'], errors='coerce').astype(int)
 
         # Remove duplicate 'Stage ID' rows and rename some columns so that join on dataframes
         # can be done easily

@@ -160,6 +160,43 @@ class QualToolSummaryTable(
   }
 }
 
+// Generate the Qualification detailed summary table
+class QualToolDetailedSummaryTable(
+    tableMeta: QualOutputTableDefinition,
+    override val rootDirectory: String,
+    hadoopConf: Configuration) extends QualToolTable(tableMeta, rootDirectory, hadoopConf) {
+  override def appendDataToWriter(fWriter: ToolTextFileWriter, rec: QualToolResult): Unit = {
+    rec.appDetailedSummaries.get.foreach { r =>
+      fWriter.writeLn(Seq(
+        formatStr(r.appName),
+        formatStr(r.appId),
+        r.estimatedInfo.attemptId,
+        r.estimatedInfo.sqlDfDuration,
+        r.sqlDataframeTaskDuration,
+        r.estimatedInfo.appDur,
+        r.estimatedInfo.gpuOpportunity,
+        ToolUtils.truncateDoubleToTwoDecimal(r.executorCpuTimePercent),
+        formatStr(ToolUtils.renderTextField(r.failedSQLIds, ",", delim)),
+        formatStr(ToolUtils.renderTextField(r.readFileFormatAndTypesNotSupported, ";", delim)),
+        formatStr(ToolUtils.renderTextField(r.writeDataFormat, ";", delim)).toUpperCase,
+        formatStr(ToolUtils.formatComplexTypes(r.complexTypes)),
+        formatStr(ToolUtils.formatComplexTypes(r.nestedComplexTypes)),
+        formatStr(ToolUtils.formatPotentialProblems(r.potentialProblems)),
+        r.longestSqlDuration,
+        r.stageInfo.map(_.stageWallclockDuration).sum,
+        r.nonSqlTaskDurationAndOverhead,
+        r.unsupportedSQLTaskDuration,
+        r.supportedSQLTaskDuration,
+        r.endDurationEstimated,
+        formatStr(r.estimatedInfo.unsupportedExecs),
+        formatStr(r.estimatedInfo.unsupportedExprs),
+        r.totalCoreSec
+      ).mkString(delim))
+    }
+  }
+}
+
+
 /**
  * The object that generates the global report for the tool.
  *
@@ -195,6 +232,8 @@ object QualToolReportGenerator extends QualReportGeneratorTrait[QualToolResult] 
     val table = tableMeta.label match {
       case "qualCoreCSVStatus" => new QualToolStatusTable(tableMeta, rootDirectory, hadoopConf)
       case "qualCoreCSVSummary" => new QualToolSummaryTable(tableMeta, rootDirectory, hadoopConf)
+      case "qualCoreCSVDetailedSummary" =>
+        new QualToolDetailedSummaryTable(tableMeta, rootDirectory, hadoopConf)
       case _ =>
         throw new IllegalArgumentException(
           s"Unknown table label ${tableMeta.label} for table ${tableMeta.description}")

@@ -113,6 +113,20 @@ class Qualification(RapidsJarTool):
     Wrapper layer around Qualification Tool.
     """
     name = 'qualification'
+    
+    def __post_init__(self):
+        super().__post_init__()
+        # Initialize the QualOutputFileReader without directory (context not available yet)
+        from spark_rapids_tools.tools.core import QualOutputFileReader
+        self.reader = QualOutputFileReader()
+    
+    def _ensure_reader_initialized(self):
+        """
+        Ensure the reader's output directory is set when context is available.
+        """
+        if self.reader.output_directory is None:
+            output_dir = self.ctxt.get_rapids_output_folder()
+            self.reader.update_output_directory(output_dir)
 
     def _process_rapids_args(self):
         """
@@ -364,8 +378,8 @@ class Qualification(RapidsJarTool):
         # Add columns for cluster configuration recommendations and tuning configurations to the processed_apps.
         recommender = ClusterConfigRecommender(self.ctxt)
         df_final_result = recommender.add_cluster_and_tuning_recommendations(df_final_result)
-        df_final_result = pd.merge(df_final_result, total_apps[['Event Log', 'AppID']],
-                                   left_on='App ID', right_on='AppID')
+        df_final_result = pd.merge(df_final_result, total_apps[['Event Log', 'App ID']],
+                                   left_on='App ID', right_on='App ID')
 
         # Write the app metadata
         app_metadata_info = output_files_info.get_value('appMetadata')
@@ -399,72 +413,10 @@ class Qualification(RapidsJarTool):
         if not self._evaluate_rapids_jar_tool_output_exist():
             return
 
-        # Using QualCoreTableLoader to get table definitions from YAML
-        from spark_rapids_tools.tools.core import QualCoreTableLoader
-        table_loader = QualCoreTableLoader()
-        
-        # Get table definitions and create a helper function to read files by label
-        def read_qualification_file_by_label(label: str, file_format: str = 'csv') -> pd.DataFrame:
-            table_def = table_loader.get_table_by_label(label)
-            if table_def.scope == 'global':
-                base_path = FSUtil.build_path(self.ctxt.get_rapids_output_folder(), 'qual_core_output')
-                report_file_path = FSUtil.build_path(base_path, table_def.fileName)
-                
-                if file_format.lower() == 'json' or table_def.fileFormat == 'JSON':
-                    import json
-                    with open(report_file_path, 'r', encoding='utf-8') as f:
-                        json_data = json.load(f)
-                    return pd.json_normalize(json_data) if json_data else pd.DataFrame()
-                else:
-                    return pd.read_csv(report_file_path)
-                    
-            elif table_def.scope == 'per-app':
-                qual_core_path = FSUtil.build_path(self.ctxt.get_rapids_output_folder(), 'qual_core_output')
-                qual_metrics_path = FSUtil.build_path(qual_core_path, 'qual_metrics')
-                
-                # Read from all application directories and combine
-                combined_dfs = []
-                try:
-                    from pathlib import Path
-                    metrics_dir = Path(qual_metrics_path)
-                    
-                    for app_dir in metrics_dir.iterdir():
-                        if app_dir.is_dir():
-                            app_id = app_dir.name  # Extract App ID from directory name
-                            app_file_path = app_dir / table_def.fileName
-                            if app_file_path.exists():
-                                try:
-                                    if file_format.lower() == 'json' or table_def.fileFormat == 'JSON':
-                                        import json
-                                        with open(app_file_path, 'r', encoding='utf-8') as f:
-                                            json_data = json.load(f)
-                                        if json_data:
-                                            app_df = pd.json_normalize(json_data)
-                                            combined_dfs.append(app_df)
-                                    else:
-                                        app_df = pd.read_csv(app_file_path)
-                                        # Add App ID column as the first column to maintain conformity
-                                        app_df.insert(0, 'App ID', app_id)
-                                        combined_dfs.append(app_df)
-                                except Exception as e:  # pylint: disable=broad-except
-                                    self.logger.warning('Failed to read file %s: %s', app_file_path, e)
-                    
-                    # Combine all DataFrames
-                    if combined_dfs:
-                        return pd.concat(combined_dfs, ignore_index=True)
-                    else:
-                        self.logger.warning('No valid files found for label: %s', label)
-                        return pd.DataFrame()
-                        
-                except Exception as e:  # pylint: disable=broad-except
-                    self.logger.error('Error reading per-app files for label %s: %s', label, e)
-                    return pd.DataFrame()
-            else:
-                return pd.DataFrame()
-
-        df = read_qualification_file_by_label('qualCoreCSVSummary')
+        self._ensure_reader_initialized()
+        df = self.reader.read_table_by_label('qualCoreCSVDetailedSummary')
         # df = self._read_qualification_output_file('summaryReport')
-        
+
         # 1. Operations related to XGboost modelling
         if not df.empty and self.ctxt.get_ctxt('estimationModelArgs')['xgboostEnabled']:
             try:
@@ -480,7 +432,8 @@ class Qualification(RapidsJarTool):
 
         # 2. Operations related to cluster information
         try:
-            cluster_info_df = read_qualification_file_by_label('clusterInfoJSONReport', 'json')
+            self._ensure_reader_initialized()
+            cluster_info_df = self.reader.read_table_by_label('clusterInfoJSONReport', 'json')
             # cluster_info_df = self._read_qualification_output_file('clusterInformation')
             
             # Merge using a left join on 'App Name' and 'App ID'. This ensures `df` includes all cluster
@@ -493,8 +446,9 @@ class Qualification(RapidsJarTool):
                               'Reason - %s:%s', type(e).__name__, e)
 
         # 3. Operations related to reading qualification output (unsupported operators and apps status)
-        unsupported_ops_df = read_qualification_file_by_label('unsupportedOpsCSVReport')
-        apps_status_df = read_qualification_file_by_label('qualCoreCSVStatus')
+        self._ensure_reader_initialized()
+        unsupported_ops_df = self.reader.read_table_by_label('unsupportedOpsCSVReport')
+        apps_status_df = self.reader.read_table_by_label('qualCoreCSVStatus')
         # unsupported_ops_df = self._read_qualification_output_file('unsupportedOperatorsReport')
         # apps_status_df = self._read_qualification_output_file('appsStatusReport')
 
@@ -694,6 +648,8 @@ class Qualification(RapidsJarTool):
                                   type(e).__name__, e)
         else:
             self.logger.warning('No applications to write to the metadata report.')
+
+
 
     def _read_qualification_output_file(self, report_name_key: str, file_format_key: str = 'csv') -> pd.DataFrame:
         """
