@@ -51,6 +51,9 @@ target/
 # prepackage locations
 csp-resources*
 tools-resources/
+# ignore generated files pulled from other sources in the repo.
+**/resources/gen_files/
+
 
 # precommit files
 *-E
