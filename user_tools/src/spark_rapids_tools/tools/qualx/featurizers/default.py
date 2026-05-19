@@ -434,11 +434,6 @@ def extract_raw_features(
         full_tbl = full_tbl.merge(time_ratio, on=['appId', 'sqlID'], how='inner')
 
     # add data source features
-    ds_tbl = combine_tables('ds_tbl')
-    grouped_ds_tbl = ds_tbl.groupby(['appId', 'sqlID'], as_index=False).sum()
-    grouped_ds_tbl['scan_bw'] = (
-        1.0 * grouped_ds_tbl['data_size'] / grouped_ds_tbl['scan_time']
-    )
     ds_cols = [
         'appId',
         'sqlID',
@@ -447,9 +442,17 @@ def extract_raw_features(
         'decode_time',
         'data_size',
     ]
-    full_tbl = full_tbl.merge(
-        grouped_ds_tbl[ds_cols], on=['appId', 'sqlID'], how='left'
-    )
+    ds_tbl = combine_tables('ds_tbl')
+    if not ds_tbl.empty and 'appId' in ds_tbl.columns:
+        grouped_ds_tbl = ds_tbl.groupby(['appId', 'sqlID'], as_index=False).sum()
+        grouped_ds_tbl['scan_bw'] = (
+            1.0 * grouped_ds_tbl['data_size'] / grouped_ds_tbl['scan_time']
+        )
+        full_tbl = full_tbl.merge(
+            grouped_ds_tbl[ds_cols], on=['appId', 'sqlID'], how='left'
+        )
+    else:
+        logger.debug('No data source information found for app(s): %s', list(unique_app_ids))
 
     # add shuffle bandwidth aggregate features
     full_tbl['shuffle_read_bw'] = (
@@ -509,8 +512,9 @@ def extract_raw_features(
     full_tbl.drop(columns=[cc + '_sum' for cc in byte_features], inplace=True)
     full_tbl.drop(columns=[cc + '_sum' for cc in time_features], inplace=True)
 
-    # impute inf/nan
-    full_tbl[ds_cols] = full_tbl[ds_cols].replace([np.inf, -np.inf], 0).fillna(0)
+    # impute inf/nan for data source columns that were merged in
+    ds_cols_in_tbl = [c for c in ds_cols if c in full_tbl.columns]
+    full_tbl[ds_cols_in_tbl] = full_tbl[ds_cols_in_tbl].replace([np.inf, -np.inf], 0).fillna(0)
 
     # warn if any appIds are missing after preprocessing
     missing_app_ids = list(set(unique_app_ids) - set(full_tbl['appId'].unique()))
