@@ -98,9 +98,10 @@ class OssOpMapperSuite extends AnyFunSuite {
     assert(mappedPlan.nodeName == "WholeStageCodegen")
 
     val graph = ToolsPlanGraph(mappedPlan)
-    val cluster = graph.nodes match {
-      case Seq(value: PhotonSparkPlanGraphCluster) => value
-      case other => fail(s"Expected one Photon cluster, found: $other")
+    assert(graph.nodes.size == 1, s"Expected one Photon cluster, found: ${graph.nodes}")
+    val cluster = graph.nodes.head match {
+      case value: PhotonSparkPlanGraphCluster => value
+      case other => fail(s"Expected a Photon cluster, found: $other")
     }
     assert(cluster.name == "WholeStageCodegen")
     assert(cluster.platformName == "PhotonShuffleMapStage")
